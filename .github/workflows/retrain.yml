@@ -4,6 +4,11 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '0 2 * * 1'
+  push:
+    paths:
+      - 'data/raw/fact_sales.csv'
+      - 'data/raw/dim_date.csv'
+      - 'data/raw/dim_product.csv'
 
 permissions:
   contents: write
