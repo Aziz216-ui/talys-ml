@@ -6,12 +6,13 @@ sauvegarde si meilleur, et genere les predictions futures.
 
 import joblib
 import os
+import pandas as pd
 
 from data_loader import load_raw_data, build_daily_aggregation
 from features import add_features, FEATURES
 from train import split_train_test, train_model
 from evaluate import compute_metrics, is_better, save_metrics
-from predict import generate_future_features, predict_future
+from predict import predict_future
 
 DATA_DIR = "data/raw"
 MODELS_DIR = "models"
@@ -53,10 +54,22 @@ def main():
         model = joblib.load(MODEL_PATH)
 
     print("7. Generation des predictions futures...")
-    futur = generate_future_features(daily_clean, horizon_days=30)
-    predictions = predict_future(model, futur, FEATURES)
+    predictions = predict_future(model, daily_clean, FEATURES, horizon_days=30)
     predictions.to_csv(os.path.join(DATA_DIR, "predictions_ventes.csv"), index=False)
     print("   Predictions sauvegardees dans data/raw/predictions_ventes.csv")
+
+    print("8. Creation du fichier combine reel + predit...")
+    historique = daily_clean[["date_transaction", "montant_total"]].copy()
+    historique["Type"] = "Reel"
+    historique = historique.rename(columns={"montant_total": "Montant"})
+
+    futur_export = predictions.copy()
+    futur_export["Type"] = "Predit"
+    futur_export = futur_export.rename(columns={"montant_predit": "Montant"})
+
+    combine = pd.concat([historique, futur_export], ignore_index=True)
+    combine.to_csv(os.path.join(DATA_DIR, "ventes_combinees.csv"), index=False)
+    print("   Fichier ventes_combinees.csv genere.")
 
 
 if __name__ == "__main__":
