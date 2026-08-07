@@ -7,12 +7,7 @@ from datetime import timedelta
 
 
 def predict_future(model, daily_clean, features, horizon_days=30):
-    """Prevision recursive sur horizon_days jours.
 
-    Chaque prediction est reinjectee dans l historique pour calculer les
-    lags et moyennes mobiles du jour suivant (sinon ces features resteraient
-    figees sur les dernieres valeurs connues pour tout l horizon).
-    """
     historique = daily_clean["montant_total"].tolist()
     derniere_date = daily_clean["date_transaction"].max()
 

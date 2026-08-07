@@ -10,7 +10,7 @@ from features import FEATURES, TARGET
 
 
 def split_train_test(daily_clean, test_ratio=0.2):
-    """Split temporel : les donnees les plus recentes vont dans le test."""
+    
     X = daily_clean[FEATURES]
     y = daily_clean[TARGET]
 
@@ -22,7 +22,7 @@ def split_train_test(daily_clean, test_ratio=0.2):
 
 
 def train_model(X_train, y_train):
-    """Entraine un XGBoost avec recherche d hyperparametres."""
+    
     param_dist = {
         "n_estimators": [100, 200, 300, 500],
         "max_depth": [3, 5, 7, 9],

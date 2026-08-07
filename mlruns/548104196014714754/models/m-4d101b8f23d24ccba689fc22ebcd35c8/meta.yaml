@@ -1,0 +1,10 @@
+artifact_location: file:///C:/Users/LENOVO/talys-ml/mlruns/548104196014714754/models/m-4d101b8f23d24ccba689fc22ebcd35c8/artifacts
+creation_timestamp: 1786080855731
+experiment_id: '548104196014714754'
+last_updated_timestamp: 1786080861845
+model_id: m-4d101b8f23d24ccba689fc22ebcd35c8
+model_type: null
+name: xgb_model
+source_run_id: 3372d77d8d57491a9678ea9c1bd47774
+status: 2
+status_message: null

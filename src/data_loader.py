@@ -7,7 +7,7 @@ import pandas as pd
 
 
 def load_raw_data(fact_sales_path, dim_date_path, dim_product_path):
-    """Charge les 3 tables nécessaires depuis des fichiers CSV."""
+    
     fact_sales = pd.read_csv(fact_sales_path)
     dim_date = pd.read_csv(dim_date_path)
     dim_product = pd.read_csv(dim_product_path)
@@ -15,7 +15,7 @@ def load_raw_data(fact_sales_path, dim_date_path, dim_product_path):
 
 
 def build_daily_aggregation(fact_sales, dim_date, dim_product):
-    """Joint les tables et agrège les ventes par jour."""
+    
     df = fact_sales.merge(dim_date, on='ID_Temps').merge(dim_product, on='ID_Product')
 
     daily = df.groupby('date_transaction').agg(

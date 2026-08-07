@@ -1,0 +1,9 @@
+artifact_location: file:///C:/Users/LENOVO/talys-ml/mlruns/548104196014714754
+creation_time: 1786080846865
+effective_trace_archival_retention: null
+experiment_id: '548104196014714754'
+last_update_time: 1786080846865
+lifecycle_stage: active
+name: Talys_Sales_Forecasting
+trace_location: null
+workspace: default

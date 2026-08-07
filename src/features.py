@@ -10,7 +10,7 @@ TARGET = "montant_total"
 
 
 def add_features(daily):
-    """Ajoute les features temporelles, lags et moyennes mobiles a daily."""
+    
     daily = daily.copy()
 
     daily["jour_semaine"] = daily["date_transaction"].dt.dayofweek
