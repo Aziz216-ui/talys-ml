@@ -29,17 +29,20 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Run unit tests
+        run: pytest tests/
+
       - name: Run training pipeline
         run: |
-          cd src
-          python main.py
+          python src/main.py
 
-      - name: Commit updated model, predictions and MLflow tracking
+      - name: Commit updated model, predictions, MLflow tracking and LLM report
         run: |
           git config --global user.email "ci@talys-ml.local"
           git config --global user.name "GitHub Actions CI"
-          git add models/ data/raw/predictions_ventes.csv data/raw/ventes_combinees.csv mlflow.db mlruns/
-          git diff --staged --quiet || git commit -m "Auto-retrain: update model, predictions and MLflow tracking [skip ci]"
+          git add models/ data/raw/predictions_ventes.csv data/raw/ventes_combinees.csv data/reports/ mlflow.db mlruns/
+          git diff --staged --quiet || git commit -m "Auto-retrain: update model, predictions, MLflow tracking and LLM report [skip ci]"
           git push
+
 
 

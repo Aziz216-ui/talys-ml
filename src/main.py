@@ -90,7 +90,17 @@ def main():
     combine.to_csv(os.path.join(DATA_DIR, "ventes_combinees.csv"), index=False)
     print("   Fichier ventes_combinees.csv genere.")
 
+    print("10. Generation du rapport decisionnel LLM...")
+    try:
+        import sys
+        sys.path.append(os.path.join(BASE_DIR, "src"))
+        from reports.report_generator import generate_executive_report
+        generate_executive_report()
+    except Exception as e:
+        print(f"   Note sur le rapport LLM: {e}")
+
 
 if __name__ == "__main__":
     main()
+
 
