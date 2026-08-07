@@ -1,9 +1,150 @@
-# Talys-Trade — Forecasting des ventes
+# 🚀 Talys-Trade — MLOps & GenAI Sales Forecasting Platform
 
-Pipeline de prévision du montant total des ventes journalières (XGBoost),
-intégré au data mart MySQL (issu du pipeline ETL Talend) et exposé via Power BI.
+![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=flat&logo=python&logoColor=white)
+![XGBoost](https://img.shields.io/badge/Model-XGBoost-EC6C00?style=flat&logo=xgboost&logoColor=white)
+![MLflow](https://img.shields.io/badge/MLOps-MLflow-01875F?style=flat&logo=mlflow&logoColor=white)
+![FastAPI](https://img.shields.io/badge/API-FastAPI-009688?style=flat&logo=fastapi&logoColor=white)
+![Groq](https://img.shields.io/badge/GenAI-Groq%20Llama%203.3-F05032?style=flat&logo=meta&logoColor=white)
+![Docker](https://img.shields.io/badge/Container-Docker-2496ED?style=flat&logo=docker&logoColor=white)
+![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-2088FF?style=flat&logo=githubactions&logoColor=white)
+![Power BI](https://img.shields.io/badge/Analytics-Power%20BI-F2C811?style=flat&logo=powerbi&logoColor=black)
 
-## Structure
-- `src/` : code source du pipeline (data loading, features, training, prediction)
-- `models/` : modèles entraînés et historique des métriques
-- `notebooks/` : exploration initiale (Colab)
+ Plateforme industrielle de prévision des ventes journalières, combinant un pipeline **MLOps complet (XGBoost + MLflow + CI/CD)**, un **Agent IA Copilot conversationnel (Groq LLM + Tool Calling)**, un moteur **RAG (ChromaDB)** et des rapports décisionnels automatisés exposés sur **FastAPI** et **Power BI**.
+
+---
+
+## 🏗️ Architecture Globale du Système
+
+```
++-----------------------------------------------------------------------------------+
+|                              Source de Données                                    |
+|                      Data Mart MySQL (issu de l'ETL Talend)                        |
++-----------------------------------------------------------------------------------+
+                                          |
+                                          v
++-----------------------------------------------------------------------------------+
+|                        Pipeline MLOps (src/main.py)                              |
+|  - Data Loading & Feature Engineering (Lags, Rolling Means)                       |
+|  - XGBoost Regressor + TimeSeriesSplit Cross Validation                           |
+|  - Évaluation & Comparaison (is_better: MAE, RMSE, MAPE)                          |
+|  - Tracking d'expériences & Modèle Registry dans MLflow (mlflow.db)               |
++-----------------------------------------------------------------------------------+
+        |                                   |                                |
+        v                                   v                                v
++-----------------------+   +-------------------------------+   +-------------------+
+| Prédictions 30 Jours  |   | Générateur de Rapports LLM    |   | Moteur RAG        |
+| ventes_combinees.csv  |   | Synthèse Décisionnelle Groq   |   | Catalogue Produits|
++-----------------------+   +-------------------------------+   | (ChromaDB)        |
+        |                                   |                   +-------------------+
+        v                                   v                             |
++-----------------------+   +---------------------------------------------+
+| Dashboards Power BI   |   |      Serveur REST FastAPI (src/api/app.py)  |
+| - Suivi Réel vs Predit|   |  - POST /api/predict (Inférence ML)         |
+| - Cartes KPI & Filtrage|  |  - POST /api/copilot/chat (Agent IA Groq)   |
++-----------------------+   |  - GET  /api/reports/latest (Rapport LLM)   |
+                            +---------------------------------------------+
+                                                    |
+                                                    v
+                                    +-------------------------------+
+                                    | Docker & GitHub Actions CI/CD |
+                                    +-------------------------------+
+```
+
+---
+
+## ✨ Fonctionnalités Clés
+
+### 1. 📈 Pipeline MLOps & Prévision des Ventes
+- **Modèle ML** : `XGBRegressor` avec tuning hyperparamétrique via `RandomizedSearchCV` et découpage temporel `TimeSeriesSplit`.
+- **Ingénierie des Caractéristiques** : Variables calendaires, Lags ($1, 7, 30$ jours), Moyennes mobiles ($7, 30$ jours).
+- **Tracking & Versioning** : Métriques ($MAE, RMSE, MAPE$) enregistrées dans une base de données SQLite `mlflow.db` avec sauvegarde du meilleur modèle.
+
+### 2. 🤖 Agent IA Copilot Sales & Tool Calling (GenAI)
+- **Modèle LLM** : **Llama 3.3 70B** propulsé par **Groq API** (réponses ultra-rapides en < 1 sec).
+- **Capacité Tool Calling** : L'Agent choisit dynamiquement les outils à exécuter :
+  - `get_sales_forecast` : Prédictions 30j.
+  - `get_historical_sales` : Ventes réelles passées.
+  - `get_model_metrics` : Précision du modèle ($MAPE, MAE$).
+  - `search_product_catalog` : Recherche sémantique dans le catalogue produits.
+
+### 3. 📚 Moteur RAG (Retrieval-Augmented Generation)
+- Base de données vectorielle **ChromaDB** indexant les produits de `dim_product.csv` pour permettre des requêtes sémantiques en langage naturel.
+
+### 4. 📄 Génération Automatique de Rapports Exécutifs LLM
+- À la fin de chaque réentraînement, un rapport de synthèse décisionnel est rédigé automatiquement en Markdown par le LLM (`data/reports/executive_report_latest.md`).
+
+### 5. 🐳 Conteneurisation & CI/CD
+- **Docker Compose** : Orchestration multi-services (FastAPI REST Server + MLflow UI).
+- **GitHub Actions** : Workflow automatisé d'intégration continue déclenché sur modification des données ou calendrier.
+
+---
+
+## ⚡ Démarrage Rapide
+
+### Option A : Lancement avec Docker Compose (Recommandé)
+
+```bash
+# 1. Cloner le projet
+git clone https://github.com/Aziz216-ui/talys-ml.git
+cd talys-ml
+
+# 2. Configurer la clé Groq (dans .env)
+echo "GROQ_API_KEY=votre_cle_groq_ici" > .env
+
+# 3. Lancer toute l'infrastructure
+docker compose up --build
+```
+- **FastAPI Documentation (Swagger UI)** : [http://localhost:8000/docs](http://localhost:8000/docs)
+- **MLflow Dashboard** : [http://localhost:5000](http://localhost:5000)
+
+---
+
+### Option B : Lancement Local Python
+
+```powershell
+# 1. Créer et activer l'environnement virtuel
+python -m venv .env
+.\.venv\Scripts\Activate.ps1
+
+# 2. Installer les dépendances
+pip install -r requirements.txt
+
+# 3. Exécuter le pipeline complet de réentraînement
+python src\main.py
+
+# 4. Lancer le serveur API FastAPI
+uvicorn src.api.app:app --reload --port 8000
+
+# 5. Lancer l'interface MLflow UI (dans un autre terminal)
+mlflow ui --backend-store-uri sqlite:///mlflow.db
+```
+
+---
+
+## 🧪 Simulation de Production & Tests
+
+Pour simuler l'arrivée de nouvelles ventes réelles en production et observer le réentraînement automatique :
+
+```powershell
+# Simule 800 nouvelles ventes et réentraîne le modèle
+python src\simulate_production.py
+
+# Lancer la suite de tests unitaires
+pytest tests/
+```
+
+---
+
+## 📌 Référence de l'API REST FastAPI
+
+| Méthode | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/` | Vérification de l'état de santé du service |
+| `POST` | `/api/predict` | Obtenir les prédictions XGBoost sur $N$ jours |
+| `POST` | `/api/copilot/chat` | Interroger l'Agent IA Copilot en langage naturel |
+| `GET` | `/api/reports/latest` | Consulter le dernier rapport de synthèse exécutif |
+
+---
+
+## 👨‍💻 Auteur
+Développé par **Aziz** — AI / MLOps Engineer.

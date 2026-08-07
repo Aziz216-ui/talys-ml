@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  # Service 1 : API REST FastAPI + Copilot Sales GenAI
+  api:
+    build: .
+    container_name: talys_sales_api
+    ports:
+      - "8000:8000"
+    environment:
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - GROQ_MODEL=llama-3.3-70b-versatile
+      - MLFLOW_ALLOW_FILE_STORE=true
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./mlflow.db:/app/mlflow.db
+      - ./.env:/app/.env
+    command: uvicorn src.api.app:app --host 0.0.0.0 --port 8000
+    restart: always
+
+  # Service 2 : Interface MLOps MLflow UI
+  mlflow:
+    build: .
+    container_name: talys_mlflow_ui
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./mlflow.db:/app/mlflow.db
+      - ./mlruns:/app/mlruns
+    command: mlflow ui --host 0.0.0.0 --port 5000 --backend-store-uri sqlite:////app/mlflow.db
+    restart: always
