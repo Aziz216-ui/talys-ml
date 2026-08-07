@@ -15,50 +15,6 @@
 
 ---
 
-## 🏗️ Architecture Globale du Système
-
-```
-+-----------------------------------------------------------------------------------+
-|                              1. Pipeline ETL Talend                               |
-|                  Extraction, Transformation & Chargement des Données               |
-+-----------------------------------------------------------------------------------+
-                                          |
-                                          v
-+-----------------------------------------------------------------------------------+
-|                           2. Data Mart MySQL (Modèle en Étoile)                   |
-|                   fact_sales, dim_date, dim_product, dim_client                   |
-+-----------------------------------------------------------------------------------+
-                                          |
-                                          v
-+-----------------------------------------------------------------------------------+
-|                     3. Pipeline MLOps & IA (src/main.py)                          |
-|  - Data Loading & Feature Engineering (Lags, Rolling Means)                       |
-|  - XGBoost Regressor + TimeSeriesSplit Cross Validation                           |
-|  - Évaluation & Comparaison (is_better: MAE, RMSE, MAPE)                          |
-|  - Tracking d'expériences & Modèle Registry dans MLflow (mlflow.db)               |
-+-----------------------------------------------------------------------------------+
-        |                                   |                                |
-        v                                   v                                v
-+-----------------------+   +-------------------------------+   +-------------------+
-| Prédictions 30 Jours  |   | Générateur de Rapports LLM    |   | Moteur RAG        |
-| ventes_combinees.csv  |   | Synthèse Décisionnelle Groq   |   | Catalogue Produits|
-+-----------------------+   +-------------------------------+   | (ChromaDB)        |
-        |                                   |                   +-------------------+
-        v                                   v                             |
-+-----------------------+   +---------------------------------------------+
-| Dashboards Power BI   |   |      Serveur REST FastAPI (src/api/app.py)  |
-| - Suivi Réel vs Predit|   |  - POST /api/predict (Inférence ML)         |
-| - Cartes KPI & Filtrage|  |  - POST /api/copilot/chat (Agent IA Groq)   |
-+-----------------------+   |  - GET  /api/reports/latest (Rapport LLM)   |
-                            +---------------------------------------------+
-                                                    |
-                                                    v
-                                    +-------------------------------+
-                                    | Docker & GitHub Actions CI/CD |
-                                    +-------------------------------+
-```
-
----
 
 ## ✨ Fonctionnalités Clés
 
