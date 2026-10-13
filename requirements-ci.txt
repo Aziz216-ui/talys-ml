@@ -1,0 +1,5 @@
+# Dependances des tests unitaires (GitHub Actions) : application + API, sans la stack d entrainement
+-r src/requirements.txt
+fastapi==0.141.1
+httpx==0.28.1
+pytest==9.1.1

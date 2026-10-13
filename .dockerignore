@@ -1,6 +1,10 @@
-﻿data/raw/*.csv
+data/raw/*.csv
 notebooks/
 .git/
 *.ipynb_checkpoints
 __pycache__/
 .venv/
+.env
+certs/
+.streamlit/secrets.toml
+data/chroma_db/

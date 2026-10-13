@@ -1,140 +1,165 @@
 # 🚀 Talys-Trade — MLOps & GenAI Sales Forecasting Platform
 
+[![CI](https://github.com/Aziz216-ui/talys-ml/actions/workflows/ci.yml/badge.svg)](https://github.com/Aziz216-ui/talys-ml/actions/workflows/ci.yml)
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://talys-trade.streamlit.app)
+
 ![Talend](https://img.shields.io/badge/ETL-Talend-FF5722?style=flat&logo=talend&logoColor=white)
-![MySQL](https://img.shields.io/badge/Data%20Mart-MySQL-4479A1?style=flat&logo=mysql&logoColor=white)
+![MySQL](https://img.shields.io/badge/Data%20Mart-MySQL%20(Aiven)-4479A1?style=flat&logo=mysql&logoColor=white)
 ![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=flat&logo=python&logoColor=white)
 ![XGBoost](https://img.shields.io/badge/Model-XGBoost-EC6C00?style=flat&logo=xgboost&logoColor=white)
-![MLflow](https://img.shields.io/badge/MLOps-MLflow-01875F?style=flat&logo=mlflow&logoColor=white)
+![MLflow](https://img.shields.io/badge/Tracking-MLflow-01875F?style=flat&logo=mlflow&logoColor=white)
+![Prefect](https://img.shields.io/badge/Orchestration-Prefect-024DFD?style=flat&logo=prefect&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/API-FastAPI-009688?style=flat&logo=fastapi&logoColor=white)
 ![Groq](https://img.shields.io/badge/GenAI-Groq%20GPT--OSS-F05032?style=flat&logoColor=white)
-![Docker](https://img.shields.io/badge/Container-Docker-2496ED?style=flat&logo=docker&logoColor=white)
-![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-2088FF?style=flat&logo=githubactions&logoColor=white)
+![Streamlit](https://img.shields.io/badge/App-Streamlit%20Cloud-FF4B4B?style=flat&logo=streamlit&logoColor=white)
 ![Power BI](https://img.shields.io/badge/Analytics-Power%20BI-F2C811?style=flat&logo=powerbi&logoColor=black)
 
- Plateforme industrielle de prévision des ventes journalières, combinant un pipeline **ETL Talend**, un **Data Mart MySQL**, un pipeline **MLOps complet (XGBoost + MLflow + CI/CD)**, un **Agent IA Copilot conversationnel (Groq LLM + Tool Calling)**, un moteur **RAG (ChromaDB)** et des rapports décisionnels automatisés exposés sur **FastAPI** et **Power BI**.
+Plateforme décisionnelle de prévision des ventes journalières : un **ETL Talend** alimente un
+**Data Mart MySQL** hébergé dans le cloud ; un pipeline **MLOps** (XGBoost, MLflow) orchestré par
+**Prefect** se réentraîne à l'arrivée de nouvelles données ; les résultats sont restitués dans
+**Power BI** et dans un **Copilot IA conversationnel** (LLM + appel d'outils) déployé sur **Streamlit Cloud**.
+
+👉 **Application en ligne : [talys-trade.streamlit.app](https://talys-trade.streamlit.app)**
 
 ---
 
+## 🏗️ Architecture
 
-## ✨ Fonctionnalités Clés
-
-### 1. 🔄 Pipeline ETL & Data Integration (Talend Open Studio)
-- **Extraction & Normalisation** : Extraction des transactions brutes, nettoyage et chargement dans le Data Mart MySQL (modèle en étoile : `fact_sales`, `dim_date`, `dim_product`, `dim_client`, `dim_localisation`).
-
-### 2. 📈 Pipeline MLOps & Prévision des Ventes
-- **Modèle ML** : `XGBRegressor` avec tuning hyperparamétrique via `RandomizedSearchCV` et découpage temporel `TimeSeriesSplit`.
-- **Ingénierie des Caractéristiques** : Variables calendaires, Lags ($1, 7, 30$ jours), Moyennes mobiles ($7, 30$ jours).
-- **Tracking & Versioning** : Métriques ($MAE, RMSE, MAPE$) enregistrées dans une base de données SQLite `mlflow.db` avec sauvegarde du meilleur modèle.
-
-### 3. 🤖 Agent IA Copilot Sales & Tool Calling (GenAI)
-- **Modèle LLM** : **GPT-OSS 120B** via **Groq API**, avec **Google Gemini** en option.
-- **Capacité Tool Calling** : L'Agent choisit dynamiquement les outils à exécuter :
-  - `get_sales_forecast` : Prédictions 30j.
-  - `get_historical_sales` : Ventes réelles passées.
-  - `get_model_metrics` : Précision du modèle ($MAPE, MAE$).
-  - `search_product_catalog` : Recherche sémantique dans le catalogue produits.
-
-### 4. 📚 Moteur RAG (Retrieval-Augmented Generation)
-- Base de données vectorielle **ChromaDB** indexant les produits de `dim_product.csv` pour permettre des requêtes sémantiques en langage naturel.
-
-### 5. 📄 Génération Automatique de Rapports Exécutifs LLM
-- À la fin de chaque réentraînement, un rapport de synthèse décisionnel est rédigé automatiquement en Markdown par le LLM (`data/reports/executive_report_latest.md`).
-
-### 6. 🐳 Conteneurisation & CI/CD
-- **Docker Compose** : Orchestration multi-services (FastAPI REST Server + MLflow UI).
-- **GitHub Actions** : Workflow automatisé d'intégration continue déclenché sur modification des données ou calendrier.
-
----
-
-## ⚡ Démarrage Rapide
-
-### Option A : Lancement avec Docker Compose (Recommandé)
-
-```bash
-# 1. Cloner le projet
-git clone https://github.com/Aziz216-ui/talys-ml.git
-cd talys-ml
-
-# 2. Configurer la clé Groq (dans .env)
-echo "GROQ_API_KEY=votre_cle_groq_ici" > .env
-
-# 3. Lancer toute l'infrastructure
-docker compose up --build
 ```
-- **FastAPI Documentation (Swagger UI)** : [http://localhost:8000/docs](http://localhost:8000/docs)
-- **MLflow Dashboard** : [http://localhost:5000](http://localhost:5000)
+ Sources ──▶ Talend (ETL) ──▶ MySQL talys_datamart (Aiven, connexion chiffrée)
+                                 │  schéma en étoile + tables de sortie ML
+                                 │
+           Prefect ◀─────────────┤  détecte les nouvelles journées de ventes
+     (flow talys-retrain)        │
+   entraînement XGBoost ─────────▶  ml_predictions · ml_ventes_combinees
+   Champion / Challenger            ml_training_runs · ml_reports
+   rapport exécutif LLM              │
+                                     ├──▶ Power BI (6 pages, ODBC chiffré)
+                                     ├──▶ Copilot IA Streamlit (Streamlit Cloud)
+                                     └──▶ API REST FastAPI (+ page de chat)
+
+ GitHub Actions : tests unitaires à chaque push (CI)
+```
+
+**Source unique de vérité** : Power BI, l'application Streamlit, l'API et le rapport LLM lisent tous
+le même Data Mart MySQL ; les chiffres sont identiques partout.
 
 ---
 
-### Option B : Lancement Local Python
+## ✨ Fonctionnalités clés
 
+### 1. 🔄 ETL & Data Warehouse
+- **Talend Open Studio** : extraction, nettoyage et chargement du Data Mart en étoile
+  (`fact_sales`, `dim_date`, `dim_product`, `dim_client`, `dim_localisation`).
+- **MySQL hébergé (Aiven)** : connexion TLS avec vérification du certificat ; vue
+  `v_ventes_quotidiennes` qui fournit la série temporelle au modèle.
+
+### 2. 📈 Prévision des ventes (Machine Learning)
+- **XGBRegressor** optimisé par `RandomizedSearchCV` avec validation temporelle `TimeSeriesSplit`.
+- **Variables** : calendrier, retards (1, 7, 30 jours), moyennes mobiles (7, 30 jours).
+- **Prévision autorégressive** sur 30 jours.
+
+### 3. 🔁 Réentraînement automatique (MLOps)
+- **Prefect** : flow `talys-retrain` planifié chaque jour à 02:00 ou déclenché à la fin du job Talend ;
+  il s'arrête si aucune nouvelle journée de ventes n'est arrivée.
+- **Champion / Challenger** : le nouveau modèle est comparé au modèle en production **sur la même
+  période de test** et n'est déployé que s'il est meilleur (MAPE).
+- **MLflow** : suivi des paramètres, métriques et modèles de chaque entraînement.
+- **Robustesse** : verrou MySQL contre les exécutions parallèles, publication atomique des résultats,
+  nouvelles tentatives automatiques sur les accès base de données.
+
+### 4. 🤖 Copilot IA (GenAI)
+- **LLM** : GPT-OSS 120B via **Groq** (Google Gemini en option), avec appel d'outils :
+  `get_sales_forecast`, `get_historical_sales`, `get_model_metrics`, `search_product_catalog`.
+- **Catalogue produits** : recherche sémantique RAG (**ChromaDB**) en local, recherche par
+  catégorie / sous-catégorie / branche sur l'application déployée.
+- **Rapport exécutif** rédigé par le LLM après chaque réentraînement et affiché dans Power BI.
+
+### 5. 📊 Power BI
+6 pages : Ventes, Produits, Clients, Prévisions, MLOps & Performance du modèle, IA Copilot.
+Les métriques affichées sont celles du **modèle en production** ; un bouton ouvre le Copilot IA en ligne.
+
+---
+
+## ⚡ Démarrage
+
+### Configuration (`.env`)
+Copier `.env.example` en `.env`, puis renseigner les clés LLM et la connexion MySQL :
+```
+DATA_SOURCE=mysql
+MYSQL_URL=mysql+pymysql://avnadmin:MOT_DE_PASSE@HOTE.aivencloud.com:PORT/talys_datamart
+MYSQL_SSL_CA=certs/ca.pem
+GROQ_API_KEY=...
+GROQ_MODEL=openai/gpt-oss-120b
+```
+
+### Installation et initialisation du Data Mart
 ```powershell
-# 1. Créer et activer l'environnement virtuel
-python -m venv .env
+python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-
-# 2. Installer les dépendances
 pip install -r requirements.txt
 
-# 3. Exécuter le pipeline complet de réentraînement
-python src\main.py
-
-# 4. Lancer le serveur API FastAPI
-uvicorn src.api.app:app --reload --port 8000
-
-# 5. Lancer l'interface MLflow UI (dans un autre terminal)
-mlflow ui --backend-store-uri sqlite:///mlflow.db
+# Crée le schéma et charge le Data Mart depuis les exports CSV (une seule fois)
+python src\load_mysql.py
 ```
 
----
-
-## 🔁 Réentraînement automatique orchestré par Prefect
-
-Le pipeline lit le Data Mart MySQL `talys_datamart` et publie ses résultats dans MySQL
-(`ml_predictions`, `ml_ventes_combinees`, `ml_training_runs`, `ml_reports`), tables lues directement par Power BI.
-
+### Réentraînement orchestré par Prefect
 ```powershell
-# 1. Initialiser le Data Mart MySQL à partir des exports CSV (une seule fois)
-python src\load_mysql.py
-
-# 2. Démarrer le serveur Prefect (tableau de bord : http://127.0.0.1:4200)
-prefect server start
-
-# 3. Démarrer le déploiement planifié (tous les jours à 02:00)
-python flowsetrain_flow.py --serve
-#    ou, pour une démonstration, une vérification toutes les minutes :
-python flowsetrain_flow.py --serve --interval 1
+prefect server start                               # tableau de bord : http://127.0.0.1:4200
+python flows\retrain_flow.py --serve               # déploiement planifié (tous les jours à 02:00)
+python flows\retrain_flow.py --serve --interval 1  # démonstration : vérification chaque minute
 
 # Déclenchement événementiel (ex. à la fin du job Talend)
 prefect deployment run "talys-retrain/talys-retrain-planifie"
 ```
 
-Le flow `talys-retrain` détecte les nouvelles journées de ventes ; sans nouvelle donnée il s'arrête,
-sinon il réentraîne, compare le challenger au modèle en production sur la même période de test
-et ne déploie que s'il est meilleur. Un verrou MySQL empêche deux réentraînements simultanés.
-
-## 🧪 Simulation de Production & Tests
-
+### Simulation de production
 ```powershell
 # Ajoute 3 nouvelles journées de ventes dans MySQL, une par minute
 python src\simulate_production.py --days 3 --every 60
+```
 
-# Lancer la suite de tests unitaires
-pytest tests/
+### Applications
+```powershell
+streamlit run src\chat_app.py                       # Copilot IA : http://localhost:8501
+uvicorn src.api.app:app --port 8000                 # API : http://localhost:8000/docs
+mlflow ui --backend-store-uri sqlite:///mlflow.db   # MLflow : http://localhost:5000
+```
+Avec Docker : `docker compose up --build` démarre l'API (port 8000) et MLflow UI (port 5000).
+
+### Tests
+```powershell
+pytest
 ```
 
 ---
 
-## 📌 Référence de l'API REST FastAPI
+## 📌 API REST (FastAPI)
 
 | Méthode | Endpoint | Description |
 | :--- | :--- | :--- |
-| `GET` | `/` | Vérification de l'état de santé du service |
-| `POST` | `/api/predict` | Obtenir les prédictions XGBoost sur $N$ jours |
-| `POST` | `/api/copilot/chat` | Interroger l'Agent IA Copilot en langage naturel |
-| `GET` | `/api/reports/latest` | Consulter le dernier rapport de synthèse exécutif |
+| `GET` | `/` | État du service |
+| `POST` | `/api/predict` | Prévisions XGBoost sur N jours |
+| `POST` | `/api/copilot/chat` | Question en langage naturel au Copilot IA |
+| `GET` | `/api/reports/latest` | Dernier rapport exécutif |
+| `GET` | `/chat` | Page web de chat |
+
+---
+
+## 📁 Structure
+
+```
+flows/retrain_flow.py      Flow Prefect de réentraînement
+src/main.py                Étapes du pipeline (chargement, entraînement, prévisions, publication)
+src/db.py                  Connexion MySQL (SSL)          src/data_access.py   Lecture des résultats
+src/load_mysql.py          Initialisation / migration du Data Mart
+src/simulate_production.py Simulation de nouvelles journées de ventes
+src/ai_agent/              Agent Copilot, outils, RAG     src/reports/         Rapport LLM
+src/api/app.py             API FastAPI                    src/chat_app.py      Application Streamlit
+sql/schema.sql             Schéma MySQL (Data Mart + tables et vues ML)
+```
 
 ---
 
 ## 👨‍💻 Auteur
-Développé par **Aziz** — AI / MLOps Engineer.
+**Melki Mohamed Aziz** — Projet de fin d'études, stage ingénieur 2026.

@@ -8,14 +8,13 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - GROQ_API_KEY=${GROQ_API_KEY}
-      - GROQ_MODEL=llama-3.3-70b-versatile
       - MLFLOW_ALLOW_FILE_STORE=true
     volumes:
       - ./data:/app/data
       - ./models:/app/models
       - ./mlflow.db:/app/mlflow.db
       - ./.env:/app/.env
+      - ./certs:/app/certs
     command: uvicorn src.api.app:app --host 0.0.0.0 --port 8000
     restart: always
 
