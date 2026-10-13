@@ -2,6 +2,7 @@
 Application Web de Chat Interactive Streamlit pour l'Agent IA Copilot Sales.
 """
 
+import importlib.util
 import os
 import sys
 import json
@@ -93,15 +94,18 @@ with st.sidebar:
             </div>
         </div>
         """, unsafe_allow_html=True)
-        st.caption(f"Runs enregistrés dans MLflow : {metrics_data.get('nombre_total_runs', 1)}")
+        st.caption(f"Réentraînements enregistrés : {metrics_data.get('nombre_total_runs', 1)}")
     except Exception as e:
         st.info("Métriques MLflow indisponibles.")
 
     st.divider()
 
     # RAG Status
-    st.subheader("🧠 RAG & Vector Store")
-    st.caption("ChromaDB Vector Store (Catalogue Produit) : ● En Ligne")
+    st.subheader("🧠 Recherche Catalogue Produits")
+    if importlib.util.find_spec("chromadb") is not None:
+        st.caption("Recherche sémantique RAG (ChromaDB) : ● Active")
+    else:
+        st.caption("Recherche par catégorie, sous-catégorie et branche : ● Active")
 
     st.divider()
 
