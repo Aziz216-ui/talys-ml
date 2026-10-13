@@ -1,0 +1,22 @@
+artifact_path: file:///C:/Users/LENOVO/talys-ml/mlruns/1/models/m-e8b39c1976b64fdf8df834327e8f4b7b/artifacts
+flavors:
+  python_function:
+    data: model.ubj
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.xgboost
+    python_version: 3.11.9
+  xgboost:
+    code: null
+    data: model.ubj
+    model_class: xgboost.sklearn.XGBRegressor
+    model_format: ubj
+    xgb_version: 3.2.0
+mlflow_version: 3.15.1
+model_id: m-e8b39c1976b64fdf8df834327e8f4b7b
+model_size_bytes: 584065
+model_uuid: m-e8b39c1976b64fdf8df834327e8f4b7b
+prompts: null
+run_id: 7db0cd253927479ebc3b855e39659ae6
+utc_time_created: '2026-10-13 07:06:23.098465'

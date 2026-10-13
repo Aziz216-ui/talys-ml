@@ -111,16 +111,25 @@ def get_model_metrics() -> str:
 @tool
 def search_product_catalog(query: str) -> str:
     """
-    Recherche dans le catalogue de produits (dim_product) par mot-clé, nom de catégorie ou libellé.
-    Exemple de query: 'Clavier', 'Électronique', 'Imprimante'.
+    Recherche sémantique RAG dans le catalogue de produits (dim_product) par mot-clé, catégorie ou description.
+    Exemple de query: 'Produits bio', 'Accessoires informatiques', 'Imprimante'.
     """
+    try:
+        from .rag import get_rag_engine
+        rag = get_rag_engine()
+        results = rag.query(query, k=5)
+        if results:
+            return json.dumps(results, indent=2, ensure_ascii=False)
+    except Exception as e:
+        print(f"Outil RAG fallback: {e}")
+
     prod_path = os.path.join(DATA_DIR, "dim_product.csv")
     if not os.path.exists(prod_path):
         return "Catalogue produit indisponible."
 
     df = pd.read_csv(prod_path)
 
-    # Recherche dans les colonnes textuelles
+    # Recherche fallback par sous-chaîne dans les colonnes textuelles
     matches = df[
         df.apply(
             lambda row: row.astype(str).str.contains(query, case=False).any(),
@@ -133,3 +142,14 @@ def search_product_catalog(query: str) -> str:
 
     records = matches.to_dict(orient="records")
     return json.dumps(records, indent=2, ensure_ascii=False)
+
+
+def load_combined_sales_df() -> pd.DataFrame:
+    """Helper pour charger le fichier des ventes combinées (Réel + Prédit) pour les graphiques UI."""
+    comb_path = os.path.join(DATA_DIR, "ventes_combinees.csv")
+    if os.path.exists(comb_path):
+        df = pd.read_csv(comb_path)
+        df["date_transaction"] = pd.to_datetime(df["date_transaction"])
+        return df
+    return pd.DataFrame()
+

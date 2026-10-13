@@ -55,7 +55,7 @@ def generate_executive_report(output_file: str = None) -> str:
             from langchain_groq import ChatGroq
             llm = ChatGroq(
                 groq_api_key=groq_api_key,
-                model_name=os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile"),
+                model_name=os.getenv("GROQ_MODEL", "openai/gpt-oss-120b"),
                 temperature=0.3
             )
             prompt = f"""Tu es le Chief Data Officer de Talys-Trade.

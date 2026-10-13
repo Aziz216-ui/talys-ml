@@ -55,7 +55,10 @@ def main():
 
         print("6. Enregistrement MLflow...")
         mlflow.log_params(best_params)
-        mlflow.log_metrics(metrics)
+        numeric_metrics = {k: v for k, v in metrics.items() if isinstance(v, (int, float))}
+        mlflow.log_metrics(numeric_metrics)
+        if "date_run" in metrics:
+            mlflow.set_tag("date_run", str(metrics["date_run"]))
         try:
             mlflow.xgboost.log_model(model, name="xgb_model")
         except Exception:
