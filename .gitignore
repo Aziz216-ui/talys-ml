@@ -3,3 +3,5 @@ __pycache__/
 *.ipynb_checkpoints
 data/chroma_db/
 models/training_state.json
+certs/
+.streamlit/secrets.toml

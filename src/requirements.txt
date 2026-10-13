@@ -1,0 +1,13 @@
+# Dependances de l'application Streamlit deployee (src/chat_app.py) sur Streamlit Community Cloud.
+# Le pipeline complet (entrainement, MLflow, Prefect, RAG ChromaDB) utilise le requirements.txt racine.
+streamlit==1.61.1
+pandas==2.3.3
+numpy==2.4.6
+SQLAlchemy==2.0.51
+PyMySQL==1.2.0
+cryptography==49.0.0
+python-dotenv==1.2.2
+requests==2.34.2
+groq==0.37.1
+langchain-core==1.5.3
+langchain-groq==1.1.3
