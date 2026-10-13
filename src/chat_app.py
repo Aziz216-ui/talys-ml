@@ -132,84 +132,112 @@ with st.sidebar:
         ]
         st.rerun()
 
-# Header
-st.markdown('<div class="main-header">💬 Agent IA Copilot Sales & Forecasting</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-header">Assistant décisionnel intelligent connecté aux pipelines MLOps XGBoost et au catalogue produits RAG.</div>', unsafe_allow_html=True)
 
-# Render Chat History
-for msg in st.session_state.messages:
-    with st.chat_message(msg["role"]):
-        st.markdown(msg["content"])
+def copilot_page():
+    # Header
+    st.markdown('<div class="main-header">💬 Agent IA Copilot Sales & Forecasting</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Assistant décisionnel intelligent connecté aux pipelines MLOps XGBoost et au catalogue produits RAG.</div>', unsafe_allow_html=True)
+
+    # Render Chat History
+    for msg in st.session_state.messages:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
         
-        # Tools called badge
-        tools_called = msg.get("tools_called", [])
-        if tools_called:
-            with st.expander("🔍 Outils exécutés", expanded=False):
-                for t in tools_called:
-                    st.markdown(f'<span class="tool-badge">⚡ {t}</span>', unsafe_allow_html=True)
-        
-        # Chart display if flagged
-        if msg.get("has_chart"):
-            df_comb = load_combined_sales_df()
-            if not df_comb.empty:
-                st.subheader("📊 Graphique Évolutif des Ventes (Réel & Prédit)")
-                chart_data = df_comb.pivot(index="date_transaction", columns="Type", values="Montant")
-                st.line_chart(chart_data, color=["#6366f1", "#38bdf8"])
-
-# Handle Inputs (either from chat_input or quick action buttons)
-prompt = st.chat_input("Posez votre question sur les ventes, prédictions ou produits...")
-
-if "prompt_trigger" in st.session_state and st.session_state.prompt_trigger:
-    prompt = st.session_state.prompt_trigger
-    del st.session_state["prompt_trigger"]
-
-if prompt:
-    # Append user message
-    st.session_state.messages.append({"role": "user", "content": prompt, "tools_called": [], "has_chart": False})
-    with st.chat_message("user"):
-        st.markdown(prompt)
-
-    # Process Assistant Response
-    with st.chat_message("assistant"):
-        with st.spinner("Raisonnement de l'Agent IA & Appel d'outils..."):
-            try:
-                agent = create_sales_copilot(groq_api_key=active_key)
-                
-                # Pass chat history to maintain multi-turn memory
-                response = agent.invoke({
-                    "input": prompt,
-                    "chat_history": st.session_state.messages[:-1]
-                })
-                
-                output_text = response.get("output", "Aucune réponse générée.")
-                tools_called = response.get("tools_called", [])
-                
-            except Exception as e:
-                output_text = f"Erreur lors du traitement de l'Agent IA : {e}"
-                tools_called = []
-
-            # Check if prompt or response requests chart rendering
-            low_prompt = prompt.lower()
-            has_chart = any(k in low_prompt for k in ["graphique", "courbe", "tendance", "visualis", "chart", "prévision", "historique"])
-
-            st.markdown(output_text)
-            
+            # Tools called badge
+            tools_called = msg.get("tools_called", [])
             if tools_called:
                 with st.expander("🔍 Outils exécutés", expanded=False):
                     for t in tools_called:
                         st.markdown(f'<span class="tool-badge">⚡ {t}</span>', unsafe_allow_html=True)
-            
-            if has_chart:
+        
+            # Chart display if flagged
+            if msg.get("has_chart"):
                 df_comb = load_combined_sales_df()
                 if not df_comb.empty:
                     st.subheader("📊 Graphique Évolutif des Ventes (Réel & Prédit)")
                     chart_data = df_comb.pivot(index="date_transaction", columns="Type", values="Montant")
                     st.line_chart(chart_data, color=["#6366f1", "#38bdf8"])
 
-            # Save assistant message to session state
-            st.session_state.messages.append({
-                "role": "assistant",
-                "content": output_text,
-                "tools_called": tools_called,
-                "has_chart": has_chart
-            })
+    # Handle Inputs (either from chat_input or quick action buttons)
+    prompt = st.chat_input("Posez votre question sur les ventes, prédictions ou produits...")
+
+    if "prompt_trigger" in st.session_state and st.session_state.prompt_trigger:
+        prompt = st.session_state.prompt_trigger
+        del st.session_state["prompt_trigger"]
+
+    if prompt:
+        # Append user message
+        st.session_state.messages.append({"role": "user", "content": prompt, "tools_called": [], "has_chart": False})
+        with st.chat_message("user"):
+            st.markdown(prompt)
+
+        # Process Assistant Response
+        with st.chat_message("assistant"):
+            with st.spinner("Raisonnement de l'Agent IA & Appel d'outils..."):
+                try:
+                    agent = create_sales_copilot(groq_api_key=active_key)
+                
+                    # Pass chat history to maintain multi-turn memory
+                    response = agent.invoke({
+                        "input": prompt,
+                        "chat_history": st.session_state.messages[:-1]
+                    })
+                
+                    output_text = response.get("output", "Aucune réponse générée.")
+                    tools_called = response.get("tools_called", [])
+                
+                except Exception as e:
+                    output_text = f"Erreur lors du traitement de l'Agent IA : {e}"
+                    tools_called = []
+
+                # Check if prompt or response requests chart rendering
+                low_prompt = prompt.lower()
+                has_chart = any(k in low_prompt for k in ["graphique", "courbe", "tendance", "visualis", "chart", "prévision", "historique"])
+
+                st.markdown(output_text)
+            
+                if tools_called:
+                    with st.expander("🔍 Outils exécutés", expanded=False):
+                        for t in tools_called:
+                            st.markdown(f'<span class="tool-badge">⚡ {t}</span>', unsafe_allow_html=True)
+            
+                if has_chart:
+                    df_comb = load_combined_sales_df()
+                    if not df_comb.empty:
+                        st.subheader("📊 Graphique Évolutif des Ventes (Réel & Prédit)")
+                        chart_data = df_comb.pivot(index="date_transaction", columns="Type", values="Montant")
+                        st.line_chart(chart_data, color=["#6366f1", "#38bdf8"])
+
+                # Save assistant message to session state
+                st.session_state.messages.append({
+                    "role": "assistant",
+                    "content": output_text,
+                    "tools_called": tools_called,
+                    "has_chart": has_chart
+                })
+
+
+def dashboards_page():
+    st.markdown('<div class="main-header">📊 Tableaux de bord Power BI</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Ventes, produits, clients, prévisions, suivi MLOps et insights IA, alimentés par le même Data Mart MySQL que le Copilot.</div>', unsafe_allow_html=True)
+
+    embed_url = os.getenv("POWERBI_EMBED_URL", "").strip()
+    if embed_url:
+        st.iframe(embed_url, height=760)
+        st.link_button("Ouvrir les tableaux de bord en plein écran", embed_url, icon=":material/open_in_new:")
+    else:
+        st.info(
+            "Les tableaux de bord apparaîtront ici une fois le rapport publié avec « Publier sur le web » "
+            "dans Power BI Service et son lien ajouté dans la variable `POWERBI_EMBED_URL`.",
+            icon=":material/info:",
+        )
+
+
+page = st.navigation(
+    [
+        st.Page(copilot_page, title="Copilot IA", icon=":material/smart_toy:", url_path="copilot", default=True),
+        st.Page(dashboards_page, title="Tableaux de bord", icon=":material/bar_chart:", url_path="tableaux-de-bord"),
+    ],
+    position="top",
+)
+page.run()
