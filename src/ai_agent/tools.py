@@ -5,12 +5,15 @@ Fournit un accès aux prédictions, à l'historique des ventes, aux métriques M
 
 import json
 import os
+import sys
 import pandas as pd
 from langchain_core.tools import tool
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DATA_DIR = os.path.join(BASE_DIR, "data", "raw")
-MODELS_DIR = os.path.join(BASE_DIR, "models")
+sys.path.insert(0, os.path.join(BASE_DIR, "src"))
+
+from data_access import read_combined_sales, read_predictions, read_production_metrics  # noqa: E402
 
 
 @tool
@@ -19,12 +22,9 @@ def get_sales_forecast(horizon_days: int = 30) -> str:
     Obtient les prédictions du montant total des ventes journalières pour les prochains jours.
     Utile quand l'utilisateur demande les prévisions, les ventes futures ou le chiffre d'affaires projeté.
     """
-    pred_path = os.path.join(DATA_DIR, "predictions_ventes.csv")
-    if not os.path.exists(pred_path):
+    df = read_predictions()
+    if df.empty:
         return "Aucune prédiction disponible. Veuillez réentraîner le modèle."
-
-    df = pd.read_csv(pred_path)
-    df["date_transaction"] = pd.to_datetime(df["date_transaction"])
     df = df.head(horizon_days)
 
     total_pred = df["montant_predit"].sum()
@@ -57,14 +57,11 @@ def get_historical_sales(days: int = 30) -> str:
     Obtient les statistiques sur l'historique récent des ventes réelles.
     Utile pour analyser les tendances passées, les meilleures journées ou le montant total vendu.
     """
-    comb_path = os.path.join(DATA_DIR, "ventes_combinees.csv")
-    if not os.path.exists(comb_path):
+    df = read_combined_sales()
+    if df.empty:
         return "Historique des ventes indisponible."
 
-    df = pd.read_csv(comb_path)
-    df_reel = df[df["Type"] == "Reel"].copy()
-    df_reel["date_transaction"] = pd.to_datetime(df_reel["date_transaction"])
-    df_reel = df_reel.sort_values("date_transaction").tail(days)
+    df_reel = df[df["Type"] == "Reel"].sort_values("date_transaction").tail(days)
 
     total_real = df_reel["Montant"].sum()
     avg_real = df_reel["Montant"].mean()
@@ -86,24 +83,17 @@ def get_model_metrics() -> str:
     Obtient les métriques de performance actuelles du modèle XGBoost (MAE, RMSE, MAPE).
     Utile si l'utilisateur demande la précision du modèle ou l'erreur moyenne de prédiction.
     """
-    metrics_path = os.path.join(MODELS_DIR, "metrics_history.json")
-    if not os.path.exists(metrics_path):
+    latest = read_production_metrics()
+    if not latest:
         return "Aucune métrique disponible."
 
-    with open(metrics_path, "r", encoding="utf-8") as f:
-        history = json.load(f)
-
-    if not history:
-        return "Historique des métriques vide."
-
-    latest = history[-1]
     result = {
         "dernier_reentrainement": {
             "MAE": round(latest.get("mae", 0), 2),
             "RMSE": round(latest.get("rmse", 0), 2),
             "MAPE": f"{round(latest.get('mape', 0), 2)}%",
         },
-        "nombre_total_runs": len(history),
+        "nombre_total_runs": int(latest.get("nombre_total_runs", 1)),
     }
     return json.dumps(result, indent=2, ensure_ascii=False)
 
@@ -146,10 +136,5 @@ def search_product_catalog(query: str) -> str:
 
 def load_combined_sales_df() -> pd.DataFrame:
     """Helper pour charger le fichier des ventes combinées (Réel + Prédit) pour les graphiques UI."""
-    comb_path = os.path.join(DATA_DIR, "ventes_combinees.csv")
-    if os.path.exists(comb_path):
-        df = pd.read_csv(comb_path)
-        df["date_transaction"] = pd.to_datetime(df["date_transaction"])
-        return df
-    return pd.DataFrame()
+    return read_combined_sales()
 

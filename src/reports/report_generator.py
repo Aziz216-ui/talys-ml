@@ -3,17 +3,17 @@ Générateur automatique de rapports décisionnels exécutifs par LLM.
 Analyse les résultats du pipeline de prévision et produit un rapport Markdown complet.
 """
 
-import json
 import os
-import pandas as pd
+import sys
 from datetime import datetime
 from dotenv import load_dotenv
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-DATA_DIR = os.path.join(BASE_DIR, "data", "raw")
-MODELS_DIR = os.path.join(BASE_DIR, "models")
 REPORTS_DIR = os.path.join(BASE_DIR, "data", "reports")
 load_dotenv(os.path.join(BASE_DIR, ".env"))
+sys.path.insert(0, os.path.join(BASE_DIR, "src"))
+
+from data_access import read_combined_sales, read_production_metrics  # noqa: E402
 
 
 def generate_executive_report(output_file: str = None) -> str:
@@ -21,30 +21,24 @@ def generate_executive_report(output_file: str = None) -> str:
     os.makedirs(REPORTS_DIR, exist_ok=True)
     report_path = output_file or os.path.join(REPORTS_DIR, "executive_report_latest.md")
 
-    # 1. Chargement des données
-    comb_path = os.path.join(DATA_DIR, "ventes_combinees.csv")
-    metrics_path = os.path.join(MODELS_DIR, "metrics_history.json")
-
+    # 1. Chargement des données (MySQL ou fichiers, comme Power BI et le Copilot)
     hist_total, pred_total, mape, mae = 0.0, 0.0, 0.0, 0.0
     start_date, end_date = "N/A", "N/A"
 
-    if os.path.exists(comb_path):
-        df = pd.read_csv(comb_path)
+    df = read_combined_sales()
+    if not df.empty:
         reel = df[df["Type"] == "Reel"]
         pred = df[df["Type"] == "Predit"]
         hist_total = reel["Montant"].sum()
         pred_total = pred["Montant"].sum()
         if not pred.empty:
-            start_date = str(pred["date_transaction"].min())
-            end_date = str(pred["date_transaction"].max())
+            start_date = f"{pred['date_transaction'].min():%Y-%m-%d}"
+            end_date = f"{pred['date_transaction'].max():%Y-%m-%d}"
 
-    if os.path.exists(metrics_path):
-        with open(metrics_path, "r", encoding="utf-8") as f:
-            history = json.load(f)
-            if history:
-                latest = history[-1]
-                mape = latest.get("mape", 0.0)
-                mae = latest.get("mae", 0.0)
+    latest = read_production_metrics()
+    if latest:
+        mape = latest.get("mape", 0.0)
+        mae = latest.get("mae", 0.0)
 
     # 2. tentative d'enrichissement par LLM (Groq)
     groq_api_key = os.getenv("GROQ_API_KEY")

@@ -5,7 +5,6 @@ Expose des endpoints pour les prédictions XGBoost, l'Agent IA Copilot Sales, et
 
 import os
 import sys
-import pandas as pd
 from typing import Optional
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,7 +14,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fil
 sys.path.append(os.path.join(BASE_DIR, "src"))
 
 from ai_agent.agent import create_sales_copilot
-from reports.report_generator import REPORTS_DIR
+from data_access import read_latest_report, read_predictions
 
 app = FastAPI(
     title="Talys-Trade Sales & AI Copilot API",
@@ -60,16 +59,15 @@ def read_root():
 @app.post("/api/predict")
 def predict_sales(req: PredictionRequest):
     """Retourne les prédictions XGBoost sur l'horizon spécifié (ex: 30j)."""
-    pred_path = os.path.join(BASE_DIR, "data", "raw", "predictions_ventes.csv")
-    if not os.path.exists(pred_path):
+    df = read_predictions()
+    if df.empty:
         raise HTTPException(
             status_code=404,
-            detail="Fichier de prédictions introuvable. Exécutez le pipeline principal."
+            detail="Aucune prédiction disponible. Exécutez le pipeline principal."
         )
 
-    df = pd.read_csv(pred_path)
     df_head = df.head(req.horizon_days)
-    records = df_head.to_dict(orient="records")
+    records = df_head.assign(date_transaction=df_head["date_transaction"].dt.strftime("%Y-%m-%d")).to_dict(orient="records")
 
     return {
         "horizon_jours": len(records),
@@ -250,12 +248,9 @@ Comment puis-je vous aider aujourd'hui ? Vous pouvez me poser des questions sur 
 @app.get("/api/reports/latest")
 def get_latest_report():
     """Consulte le dernier rapport exécutif généré par le LLM."""
-    report_path = os.path.join(REPORTS_DIR, "executive_report_latest.md")
-    if not os.path.exists(report_path):
+    content = read_latest_report()
+    if not content:
         raise HTTPException(status_code=404, detail="Rapport non encore généré.")
-
-    with open(report_path, "r", encoding="utf-8") as f:
-        content = f.read()
 
     return {
         "file": "executive_report_latest.md",
