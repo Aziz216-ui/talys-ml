@@ -19,7 +19,8 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 load_dotenv(os.path.join(BASE_DIR, ".env"))
 
 MYSQL_URL = os.getenv("MYSQL_URL", "mysql+pymysql://root:@127.0.0.1:3306/talys_datamart")
-
+MYSQL_SSL_CA = os.getenv("MYSQL_SSL_CA")
+MYSQL_SSL_CA_PEM = os.getenv("MYSQL_SSL_CA_PEM")
 
 def use_mysql():
     return os.getenv("DATA_SOURCE", "csv").lower() == "mysql"

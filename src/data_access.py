@@ -46,6 +46,14 @@ def read_combined_sales():
     return df
 
 
+def read_products():
+    """Catalogue produits (dim_product)."""
+    if use_mysql():
+        return pd.read_sql("SELECT * FROM dim_product", get_engine())
+    path = os.path.join(DATA_DIR, "dim_product.csv")
+    return pd.read_csv(path) if os.path.exists(path) else pd.DataFrame()
+
+
 def read_production_metrics():
     """Metriques du modele en production lors du dernier reentrainement, ou None."""
     if use_mysql():

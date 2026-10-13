@@ -3,8 +3,10 @@ Outils métier pour l'Agent IA Copilot Sales & Forecasting.
 Fournit un accès aux prédictions, à l'historique des ventes, aux métriques MLflow et aux produits.
 """
 
+import importlib.util
 import json
 import os
+import re
 import sys
 import pandas as pd
 from langchain_core.tools import tool
@@ -13,7 +15,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fil
 DATA_DIR = os.path.join(BASE_DIR, "data", "raw")
 sys.path.insert(0, os.path.join(BASE_DIR, "src"))
 
-from data_access import read_combined_sales, read_predictions, read_production_metrics  # noqa: E402
+from data_access import read_combined_sales, read_predictions, read_production_metrics, read_products  # noqa: E402
 
 
 @tool
@@ -104,34 +106,67 @@ def search_product_catalog(query: str) -> str:
     Recherche sémantique RAG dans le catalogue de produits (dim_product) par mot-clé, catégorie ou description.
     Exemple de query: 'Produits bio', 'Accessoires informatiques', 'Imprimante'.
     """
-    try:
-        from .rag import get_rag_engine
-        rag = get_rag_engine()
-        results = rag.query(query, k=5)
-        if results:
-            return json.dumps(results, indent=2, ensure_ascii=False)
-    except Exception as e:
-        print(f"Outil RAG fallback: {e}")
+    if importlib.util.find_spec("chromadb") is not None:
+        try:
+            from .rag import get_rag_engine
+            rag = get_rag_engine()
+            if rag.vector_store is not None:
+                results = rag.query(query, k=5)
+                if results:
+                    return json.dumps(results, indent=2, ensure_ascii=False)
+        except Exception as e:
+            print(f"Outil RAG fallback: {e}")
 
-    prod_path = os.path.join(DATA_DIR, "dim_product.csv")
-    if not os.path.exists(prod_path):
+    # Sans index vectoriel : recherche par mots-cles sur la categorie, la sous-categorie, la branche et le nom
+    df = read_products()
+    if df.empty:
         return "Catalogue produit indisponible."
 
-    df = pd.read_csv(prod_path)
-
-    # Recherche fallback par sous-chaîne dans les colonnes textuelles
-    matches = df[
-        df.apply(
-            lambda row: row.astype(str).str.contains(query, case=False).any(),
-            axis=1,
-        )
-    ].head(10)
-
+    matches = keyword_search(df, query)
     if matches.empty:
         return f"Aucun produit trouvé correspondant au mot-clé '{query}'."
 
-    records = matches.to_dict(orient="records")
-    return json.dumps(records, indent=2, ensure_ascii=False)
+    summary = {
+        "nombre_produits": len(matches),
+        "prix_moyen": round(float(matches["Price"].mean()), 2),
+        "ph_moyen": round(float(matches["Ph"].mean()), 2),
+        "repartition_categorie": matches["Categorie"].value_counts().to_dict(),
+        "repartition_sous_categorie": matches["Sous_Categorie"].value_counts().head(10).to_dict(),
+        "exemples": matches.head(10).to_dict(orient="records"),
+    }
+    return json.dumps(summary, indent=2, ensure_ascii=False, default=str)
+
+
+STOPWORDS = {"produit", "produits", "categorie", "catégorie", "catalogue", "recherche", "gamme",
+             "les", "des", "du", "de", "la", "le", "dans", "et", "en", "sur", "pour"}
+SEARCH_COLUMNS = ["Categorie", "Sous_Categorie", "Branche", "Product_Name"]
+
+
+def keyword_search(df: pd.DataFrame, query: str) -> pd.DataFrame:
+    """Produits dont la categorie correspond exactement a un mot-cle, sinon ceux contenant un mot-cle."""
+    words = re.findall(r"[\w-]+", query.lower())
+    lowered = {c: df[c].astype(str).str.lower() for c in SEARCH_COLUMNS}
+
+    # "branche A" : les branches sont designees par une seule lettre
+    if "branche" in words:
+        letters = [w for w in words if len(w) == 1]
+        if letters:
+            return df[lowered["Branche"].isin(letters)]
+
+    tokens = [t for t in words if len(t) >= 2 and t not in STOPWORDS]
+    if not tokens:
+        return df.head(0)
+
+    for col in ("Categorie", "Sous_Categorie"):
+        exact = df[lowered[col].isin(tokens)]
+        if not exact.empty:
+            return exact
+
+    mask = pd.Series(False, index=df.index)
+    for token in tokens:
+        for col in SEARCH_COLUMNS:
+            mask |= lowered[col].str.contains(rf"\b{re.escape(token)}\b", regex=True)
+    return df[mask]
 
 
 def load_combined_sales_df() -> pd.DataFrame:
