@@ -147,7 +147,7 @@ def get_chat_ui():
     <body>
         <header>
             <div class="logo">🤖 Talys-Trade Copilot IA</div>
-            <div class="status">● Connecté (Groq Llama 3.3)</div>
+            <div class="status">● Connecté (Groq GPT-OSS · Gemini)</div>
         </header>
 
         <main>

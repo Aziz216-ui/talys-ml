@@ -6,7 +6,7 @@
 ![XGBoost](https://img.shields.io/badge/Model-XGBoost-EC6C00?style=flat&logo=xgboost&logoColor=white)
 ![MLflow](https://img.shields.io/badge/MLOps-MLflow-01875F?style=flat&logo=mlflow&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/API-FastAPI-009688?style=flat&logo=fastapi&logoColor=white)
-![Groq](https://img.shields.io/badge/GenAI-Groq%20Llama%203.3-F05032?style=flat&logo=meta&logoColor=white)
+![Groq](https://img.shields.io/badge/GenAI-Groq%20GPT--OSS-F05032?style=flat&logoColor=white)
 ![Docker](https://img.shields.io/badge/Container-Docker-2496ED?style=flat&logo=docker&logoColor=white)
 ![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-2088FF?style=flat&logo=githubactions&logoColor=white)
 ![Power BI](https://img.shields.io/badge/Analytics-Power%20BI-F2C811?style=flat&logo=powerbi&logoColor=black)
@@ -27,7 +27,7 @@
 - **Tracking & Versioning** : Métriques ($MAE, RMSE, MAPE$) enregistrées dans une base de données SQLite `mlflow.db` avec sauvegarde du meilleur modèle.
 
 ### 3. 🤖 Agent IA Copilot Sales & Tool Calling (GenAI)
-- **Modèle LLM** : **Llama 3.3 70B** propulsé par **Groq API** (réponses ultra-rapides en < 1 sec).
+- **Modèle LLM** : **GPT-OSS 120B** via **Groq API**, avec **Google Gemini** en option.
 - **Capacité Tool Calling** : L'Agent choisit dynamiquement les outils à exécuter :
   - `get_sales_forecast` : Prédictions 30j.
   - `get_historical_sales` : Ventes réelles passées.
