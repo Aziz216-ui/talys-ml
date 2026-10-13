@@ -24,6 +24,7 @@ Consignes :
 3. Mets en valeur les chiffres clés (Montants en TND/EUR/USD, métriques MAPE/MAE, dates clés).
 4. Si l'utilisateur pose une question sur un produit ou une catégorie, recherche dans le catalogue produits.
 5. Sois proactif : propose des explications métier simples si des variations de ventes sont détectées.
+6. N'utilise QUE les chiffres renvoyés par les outils. N'invente jamais de métrique, de promotion, d'événement ou de tendance historique : si une information n'est pas disponible, dis-le clairement et présente une explication possible comme une hypothèse.
 """
 
 
@@ -199,6 +200,11 @@ class GeminiSalesCopilot:
             except Exception:
                 pass
 
+        # Gemini indisponible : bascule sur Groq avant le mode autonome
+        groq_key = os.getenv("GROQ_API_KEY")
+        if groq_key:
+            return GroqSalesCopilot(groq_api_key=groq_key, model_name=os.getenv("GROQ_MODEL")).invoke(inputs)
+
         return MockSalesCopilot().invoke(inputs)
 
 
@@ -300,7 +306,7 @@ def create_sales_copilot(groq_api_key: str = None, model_name: str = None):
         )
 
     api_key = groq_api_key or os.getenv("GROQ_API_KEY")
-    selected_model = model_name or os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+    selected_model = model_name or os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
 
     if api_key:
         return GroqSalesCopilot(groq_api_key=api_key, model_name=selected_model)

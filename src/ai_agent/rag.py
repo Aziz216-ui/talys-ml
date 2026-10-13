@@ -44,13 +44,15 @@ class ProductRAGEngine:
             client = chromadb.PersistentClient(path=CHROMA_DIR)
             collection = client.get_or_create_collection(name="product_catalog")
 
-            # Remplit la collection si vide
+            # Remplit la collection si vide, par lots (Chroma limite la taille d'un ajout)
             if collection.count() == 0 and documents:
-                collection.add(
-                    documents=documents,
-                    metadatas=metadatas,
-                    ids=ids
-                )
+                batch = client.get_max_batch_size()
+                for start in range(0, len(documents), batch):
+                    collection.add(
+                        documents=documents[start:start + batch],
+                        metadatas=metadatas[start:start + batch],
+                        ids=ids[start:start + batch]
+                    )
             self.vector_store = collection
             print(f"RAG: ChromaDB initialisé avec {collection.count()} produits.")
         except Exception as e:
