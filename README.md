@@ -88,13 +88,36 @@ mlflow ui --backend-store-uri sqlite:///mlflow.db
 
 ---
 
-## 🧪 Simulation de Production & Tests
+## 🔁 Réentraînement automatique orchestré par Prefect
 
-Pour simuler l'arrivée de nouvelles ventes réelles en production et observer le réentraînement automatique :
+Le pipeline lit le Data Mart MySQL `talys_datamart` et publie ses résultats dans MySQL
+(`ml_predictions`, `ml_ventes_combinees`, `ml_training_runs`, `ml_reports`), tables lues directement par Power BI.
 
 ```powershell
-# Simule 800 nouvelles ventes et réentraîne le modèle
-python src\simulate_production.py
+# 1. Initialiser le Data Mart MySQL à partir des exports CSV (une seule fois)
+python src\load_mysql.py
+
+# 2. Démarrer le serveur Prefect (tableau de bord : http://127.0.0.1:4200)
+prefect server start
+
+# 3. Démarrer le déploiement planifié (tous les jours à 02:00)
+python flowsetrain_flow.py --serve
+#    ou, pour une démonstration, une vérification toutes les minutes :
+python flowsetrain_flow.py --serve --interval 1
+
+# Déclenchement événementiel (ex. à la fin du job Talend)
+prefect deployment run "talys-retrain/talys-retrain-planifie"
+```
+
+Le flow `talys-retrain` détecte les nouvelles journées de ventes ; sans nouvelle donnée il s'arrête,
+sinon il réentraîne, compare le challenger au modèle en production sur la même période de test
+et ne déploie que s'il est meilleur. Un verrou MySQL empêche deux réentraînements simultanés.
+
+## 🧪 Simulation de Production & Tests
+
+```powershell
+# Ajoute 3 nouvelles journées de ventes dans MySQL, une par minute
+python src\simulate_production.py --days 3 --every 60
 
 # Lancer la suite de tests unitaires
 pytest tests/

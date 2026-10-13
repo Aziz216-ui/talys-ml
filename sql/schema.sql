@@ -86,5 +86,32 @@ CREATE TABLE IF NOT EXISTS ml_training_runs (
     rmse DOUBLE,
     mape DOUBLE,
     champion_mape DOUBLE,
+    production_mae DOUBLE,
+    production_rmse DOUBLE,
+    production_mape DOUBLE,
     promu BOOLEAN NOT NULL
 ) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS ml_reports (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    generated_at DATETIME NOT NULL,
+    markdown_content MEDIUMTEXT NOT NULL
+) ENGINE=InnoDB;
+
+-- Historique des runs pour la page MLOps de Power BI
+CREATE OR REPLACE VIEW v_metrics_history AS
+SELECT CONCAT('Run ', id) AS run_id,
+       date_run,
+       trigger_source,
+       derniere_date_donnees,
+       mae, rmse, mape,
+       production_mae, production_rmse, production_mape,
+       promu
+FROM ml_training_runs;
+
+-- Dernier rapport executif LLM (page IA Copilot de Power BI)
+CREATE OR REPLACE VIEW v_latest_report AS
+SELECT 'executive_report_latest.md' AS file, generated_at, markdown_content
+FROM ml_reports
+ORDER BY id DESC
+LIMIT 1;
