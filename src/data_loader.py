@@ -27,3 +27,14 @@ def build_daily_aggregation(fact_sales, dim_date, dim_product):
     daily = daily.sort_values('date_transaction').reset_index(drop=True)
 
     return daily
+
+
+def load_daily_from_mysql(engine):
+    """Lit la serie journaliere directement depuis la vue v_ventes_quotidiennes du Data Mart."""
+    daily = pd.read_sql(
+        "SELECT date_transaction, nombre_ventes, montant_total FROM v_ventes_quotidiennes",
+        engine,
+    )
+    daily['date_transaction'] = pd.to_datetime(daily['date_transaction'])
+    daily['montant_total'] = daily['montant_total'].astype(float)
+    return daily.sort_values('date_transaction').reset_index(drop=True)

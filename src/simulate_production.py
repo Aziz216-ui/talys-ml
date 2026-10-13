@@ -1,75 +1,95 @@
 """
-Script de simulation des conditions de production (Production Retraining Simulation).
-1. Simule l'arrivée de nouvelles ventes quotidiennes dans fact_sales.csv.
-2. Déclenche le pipeline automatique de réentraînement (main.py).
-3. Affiche les métriques enregistrées dans MLflow (mlflow.db) et la mise à jour des prédictions/rapports.
+Simulation de production : de nouvelles journees de ventes arrivent dans le Data Mart MySQL.
+
+Chaque journee simulee :
+  - ajoute la date suivante dans dim_date ;
+  - insere dans fact_sales un nombre de ventes tire de l'historique recent,
+    en reprenant le mix produits / clients / localisations de ventes reelles recentes.
+
+Usage :
+  python src/simulate_production.py                 # ajoute 1 journee
+  python src/simulate_production.py --days 7        # ajoute 7 journees
+  python src/simulate_production.py --days 3 --every 60   # 1 journee toutes les 60 s
+  python src/simulate_production.py --retrain       # reentraine juste apres l'ajout
 """
 
+import argparse
 import os
-import sys
+import time
+from datetime import timedelta
+
+import numpy as np
 import pandas as pd
-import random
+from sqlalchemy import text
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATA_DIR = os.path.join(BASE_DIR, "data", "raw")
-FACT_SALES_PATH = os.path.join(DATA_DIR, "fact_sales.csv")
+from db import get_engine
+
+HISTORY_DAYS = 90
 
 
-def simulate_new_sales_batch(num_transactions: int = 500):
-    """Génère de nouvelles transactions de ventes et les ajoute à fact_sales.csv."""
-    if not os.path.exists(FACT_SALES_PATH):
-        print(f"Erreur : {FACT_SALES_PATH} introuvable.")
-        return
+def add_sales_day(engine, rng):
+    with engine.begin() as conn:
+        id_temps, last_date = conn.execute(text("SELECT MAX(ID_Temps), MAX(date_transaction) FROM dim_date")).one()
+        last_id = conn.execute(text("SELECT MAX(ID_Fact_Sales) FROM fact_sales")).scalar()
 
-    df = pd.read_csv(FACT_SALES_PATH)
-    last_id = df["ID_Fact_Sales"].max()
+        recent = pd.read_sql(text(
+            "SELECT f.ID_Product, f.ID_Client, f.ID_Localisation, d.date_transaction "
+            "FROM fact_sales f JOIN dim_date d USING (ID_Temps) "
+            "WHERE d.date_transaction > :since"
+        ), conn, params={"since": last_date - timedelta(days=HISTORY_DAYS)})
 
-    new_rows = []
-    for i in range(1, num_transactions + 1):
-        new_id = last_id + i
-        # Sélection aléatoire de temps, produit, client, localisation existants
-        temps_id = random.randint(1, 3500)
-        product_id = random.randint(1, 500)
-        client_id = random.randint(1, 500)
-        loc_id = random.randint(1, 500)
+        daily_counts = recent.groupby("date_transaction").size().to_numpy()
+        n_sales = int(rng.choice(daily_counts))
 
-        new_rows.append({
-            "ID_Fact_Sales": new_id,
-            "ID_Temps": temps_id,
-            "ID_Product": product_id,
-            "ID_Client": client_id,
-            "ID_Localisation": loc_id
+        new_date = last_date + timedelta(days=1)
+        new_id_temps = id_temps + 1
+        conn.execute(text(
+            "INSERT INTO dim_date (ID_Temps, date_transaction, jour, mois, trimestre, annee, date_transaction_reelle) "
+            "VALUES (:id, :d, :jour, :mois, :trim, :annee, :reelle)"
+        ), {
+            "id": new_id_temps, "d": new_date, "jour": new_date.day, "mois": new_date.month,
+            "trim": (new_date.month - 1) // 3 + 1, "annee": new_date.year,
+            "reelle": new_date.strftime("%a %b %d 00:00:00 GMT+01:00 %Y"),
         })
 
-    new_df = pd.DataFrame(new_rows)
-    updated_df = pd.concat([df, new_df], ignore_index=True)
-    updated_df.to_csv(FACT_SALES_PATH, index=False)
+        sample = recent.sample(n=n_sales, replace=True, random_state=int(rng.integers(1_000_000)))
+        rows = [
+            {"id": last_id + i + 1, "t": new_id_temps, "p": int(r.ID_Product),
+             "c": int(r.ID_Client), "l": int(r.ID_Localisation)}
+            for i, r in enumerate(sample.itertuples())
+        ]
+        conn.execute(text(
+            "INSERT INTO fact_sales (ID_Fact_Sales, ID_Temps, ID_Product, ID_Client, ID_Localisation) "
+            "VALUES (:id, :t, :p, :c, :l)"
+        ), rows)
 
-    print(f"⚡ SIMULATION PRODUCTION : {num_transactions} nouvelles ventes ajoutées à fact_sales.csv !")
-    print(f"   Nombre total de transactions : {len(updated_df)} (précédemment : {len(df)})")
+        montant = conn.execute(text(
+            "SELECT montant_total FROM v_ventes_quotidiennes WHERE date_transaction = :d"
+        ), {"d": new_date}).scalar()
+
+    print(f"   + {new_date} : {n_sales} ventes, {float(montant):,.0f} TND")
+    return new_date
 
 
 def main():
-    print("=" * 70)
-    print("🚀 DÉMARRAGE DE LA SIMULATION DE PRODUCTION (FLUX DE DONNÉES TEMPS RÉEL)")
-    print("=" * 70)
+    parser = argparse.ArgumentParser(description="Simule l'arrivee de nouvelles journees de ventes dans MySQL.")
+    parser.add_argument("--days", type=int, default=1, help="nombre de journees a ajouter")
+    parser.add_argument("--every", type=float, default=0, help="secondes entre deux journees (0 = d'un coup)")
+    parser.add_argument("--retrain", action="store_true", help="lance le reentrainement juste apres")
+    args = parser.parse_args()
 
-    # Étape 1 : Simulation de nouvelles transactions
-    simulate_new_sales_batch(num_transactions=800)
+    engine = get_engine()
+    rng = np.random.default_rng()
+    print(f"SIMULATION : ajout de {args.days} journee(s) de ventes dans talys_datamart")
+    for i in range(args.days):
+        add_sales_day(engine, rng)
+        if args.every and i < args.days - 1:
+            time.sleep(args.every)
 
-    print("\n🔄 Lancement du Pipeline de Réentraînement Automatique...\n")
-
-    # Étape 2 : Exécution de main.py
-    sys.path.append(os.path.join(BASE_DIR, "src"))
-    from main import main as run_pipeline
-    run_pipeline()
-
-    print("\n" + "=" * 70)
-    print("✅ SIMULATION TERMINÉE AVEC SUCCÈS !")
-    print("   - MLflow SQLite (mlflow.db) a enregistré le nouveau run")
-    print("   - Le modèle XGBoost a été réévalué contre l'ancien")
-    print("   - Les fichiers ventes_combinees.csv et executive_report_latest.md ont été actualisés")
-    print("=" * 70)
+    if args.retrain:
+        os.environ["DATA_SOURCE"] = "mysql"
+        from main import main as run_pipeline
+        run_pipeline(trigger_source="simulation")
 
 
 if __name__ == "__main__":
