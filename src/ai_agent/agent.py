@@ -1,5 +1,6 @@
 import os
 import json
+import time
 import requests
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
@@ -161,11 +162,11 @@ class GeminiSalesCopilot:
                         res_2 = requests.post(url, headers=headers, json=payload_2, timeout=30)
                         if res_2.status_code == 200:
                             out_text = res_2.json()["choices"][0]["message"]["content"]
-                            return {"output": out_text, "tools_called": tools_called}
+                            return {"output": out_text, "tools_called": tools_called, "model": model}
 
                     out_text = choice.get("content", "")
                     if out_text:
-                        return {"output": out_text, "tools_called": tools_called}
+                        return {"output": out_text, "tools_called": tools_called, "model": model}
 
                 else:
                     last_error = f"Status {res.status_code}: {res.text}"
@@ -196,7 +197,7 @@ class GeminiSalesCopilot:
                         if parts:
                             text_resp = parts[0].get("text", "")
                             if text_resp:
-                                return {"output": text_resp, "tools_called": []}
+                                return {"output": text_resp, "tools_called": [], "model": model}
             except Exception:
                 pass
 
@@ -285,9 +286,9 @@ class GroqSalesCopilot:
                             messages.append(ToolMessage(content=str(tool_result), tool_call_id=tool_call["id"]))
 
                     final_response = llm.invoke(messages)
-                    return {"output": final_response.content, "tools_called": tools_called}
+                    return {"output": final_response.content, "tools_called": tools_called, "model": model}
 
-                return {"output": response.content, "tools_called": tools_called}
+                return {"output": response.content, "tools_called": tools_called, "model": model}
 
             except Exception as e:
                 last_exception = e
@@ -314,10 +315,58 @@ def create_sales_copilot(groq_api_key: str = None, model_name: str = None):
     return MockSalesCopilot()
 
 
+def check_llm_health(groq_api_key: str = None) -> dict:
+    """Envoie une vraie requête minimale au fournisseur LLM que le Copilot utilisera.
+
+    Une réponse HTTP 200 prouve que la clé, le quota et le modèle sont valides.
+    """
+    gemini_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    groq_key = groq_api_key or os.getenv("GROQ_API_KEY")
+    ping = [{"role": "user", "content": "Réponds uniquement : OK"}]
+
+    if gemini_key:
+        provider, model = "Google Gemini", os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    elif groq_key:
+        provider, model = "Groq", os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
+    else:
+        return {"ok": False, "provider": None, "model": None, "error": "Aucune clé LLM configurée"}
+
+    start = time.perf_counter()
+    try:
+        if gemini_key:
+            res = requests.post(
+                "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+                headers={
+                    "x-goog-api-key": gemini_key,
+                    "Authorization": f"Bearer {gemini_key}",
+                    "Content-Type": "application/json",
+                },
+                json={"model": model, "messages": ping},
+                timeout=30,
+            )
+            res.raise_for_status()
+        else:
+            from groq import Groq
+            reply = Groq(api_key=groq_key, timeout=30).chat.completions.create(model=model, messages=ping)
+            model = reply.model
+    except Exception as e:
+        return {"ok": False, "provider": provider, "model": model, "error": str(e)[:200]}
+
+    return {"ok": True, "provider": provider, "model": model, "latency": time.perf_counter() - start}
+
+
+MOCK_MODEL_LABEL = "mode-autonome"
+
+
 class MockSalesCopilot:
     """Agent autonome de secours qui exécute réellement les outils et formate les réponses."""
 
     def invoke(self, inputs: dict):
+        result = self._respond(inputs)
+        result["model"] = MOCK_MODEL_LABEL
+        return result
+
+    def _respond(self, inputs: dict):
         user_input = inputs.get("input", "")
         low_input = user_input.lower()
         tools_called = []

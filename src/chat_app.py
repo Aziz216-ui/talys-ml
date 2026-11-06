@@ -12,8 +12,22 @@ import streamlit as st
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(BASE_DIR, "src"))
 
-from ai_agent.agent import create_sales_copilot
+from ai_agent.agent import MOCK_MODEL_LABEL, check_llm_health, create_sales_copilot
 from ai_agent.tools import get_model_metrics, load_combined_sales_df
+
+
+@st.cache_data(ttl=600, show_spinner="Test de connexion au LLM...")
+def llm_health(groq_key: str) -> dict:
+    return check_llm_health(groq_api_key=groq_key)
+
+
+def render_model_caption(model):
+    if not model:
+        return
+    if model == MOCK_MODEL_LABEL:
+        st.caption("⚠️ Répondu en mode autonome (sans LLM, réponses à règles fixes)")
+    else:
+        st.caption(f"🤖 Répondu par `{model}`")
 
 st.set_page_config(
     page_title="Talys-Trade — Copilot IA Sales",
@@ -57,14 +71,20 @@ with st.sidebar:
     )
     
     active_key = groq_input_key.strip() or os.getenv("GROQ_API_KEY", "")
-    gemini_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
-    
-    if gemini_key:
-        st.success(f"🟢 Google Gemini {os.getenv('GEMINI_MODEL', 'gemini-2.5-flash')} : Actif (AI Studio)")
-    elif active_key:
-        st.success("🟢 Groq LLM : Actif")
+
+    # Test réel du LLM (requête minimale), mis en cache 10 minutes
+    health = llm_health(active_key)
+    if health["provider"] is None:
+        st.info("🔵 Mode Autonome Intégré (aucune clé LLM)")
+    elif health["ok"]:
+        st.success(f"🟢 {health['provider']} : opérationnel\n\n`{health['model']}` · {health['latency']:.1f} s")
     else:
-        st.info("🔵 Mode Autonome Intégré")
+        st.error(f"🔴 {health['provider']} injoignable : {health['error']}")
+    if health["provider"] is not None:
+        st.caption("Testé par une vraie requête, renouvelée toutes les 10 min.")
+        if st.button("🔄 Tester le LLM maintenant", use_container_width=True):
+            llm_health.clear()
+            st.rerun()
 
     st.divider()
 
@@ -142,7 +162,8 @@ def copilot_page():
     for msg in st.session_state.messages:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
-        
+            render_model_caption(msg.get("model"))
+
             # Tools called badge
             tools_called = msg.get("tools_called", [])
             if tools_called:
@@ -185,17 +206,20 @@ def copilot_page():
                 
                     output_text = response.get("output", "Aucune réponse générée.")
                     tools_called = response.get("tools_called", [])
-                
+                    model_used = response.get("model")
+
                 except Exception as e:
                     output_text = f"Erreur lors du traitement de l'Agent IA : {e}"
                     tools_called = []
+                    model_used = None
 
                 # Check if prompt or response requests chart rendering
                 low_prompt = prompt.lower()
                 has_chart = any(k in low_prompt for k in ["graphique", "courbe", "tendance", "visualis", "chart", "prévision", "historique"])
 
                 st.markdown(output_text)
-            
+                render_model_caption(model_used)
+
                 if tools_called:
                     with st.expander("🔍 Outils exécutés", expanded=False):
                         for t in tools_called:
@@ -213,7 +237,8 @@ def copilot_page():
                     "role": "assistant",
                     "content": output_text,
                     "tools_called": tools_called,
-                    "has_chart": has_chart
+                    "has_chart": has_chart,
+                    "model": model_used,
                 })
 
 
