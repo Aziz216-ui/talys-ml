@@ -16,18 +16,39 @@ from ai_agent.agent import MOCK_MODEL_LABEL, check_llm_health, create_sales_copi
 from ai_agent.tools import get_model_metrics, load_combined_sales_df
 
 
-@st.cache_data(ttl=600, show_spinner="Test de connexion au LLM...")
+@st.cache_data(ttl=600, show_spinner="Vérification de l'assistant IA...")
 def llm_health(groq_key: str) -> dict:
     return check_llm_health(groq_api_key=groq_key)
 
 
-def render_model_caption(model):
-    if not model:
-        return
-    if model == MOCK_MODEL_LABEL:
-        st.caption("⚠️ Répondu en mode autonome (sans LLM, réponses à règles fixes)")
+def render_llm_status(groq_key: str):
+    """Badge de statut discret ; les détails techniques restent repliés."""
+    health = llm_health(groq_key)
+    if health["ok"]:
+        st.badge("Assistant IA opérationnel", icon=":material/check_circle:", color="green")
+    elif health["provider"] is None:
+        st.badge("Mode autonome", icon=":material/offline_bolt:", color="blue")
     else:
-        st.caption(f"🤖 Répondu par `{model}`")
+        st.badge("Assistant IA en mode dégradé", icon=":material/warning:", color="orange")
+
+    with st.expander("Détails techniques", icon=":material/build:"):
+        if health["provider"] is None:
+            st.caption("Aucune clé LLM configurée.")
+        else:
+            st.caption(f"Fournisseur : {health['provider']}  \nModèle : `{health['model']}`")
+            if health["ok"]:
+                st.caption(f"Temps de réponse : {health['latency']:.1f} s")
+            else:
+                st.caption(f"Erreur : {health['error']}")
+            st.caption("Vérifié automatiquement toutes les 10 min.")
+            if st.button("Tester maintenant", icon=":material/refresh:", width="stretch"):
+                llm_health.clear()
+                st.rerun()
+
+
+def render_fallback_notice(model):
+    if model == MOCK_MODEL_LABEL:
+        st.caption(":material/info: Réponse en mode simplifié : l'assistant IA est momentanément indisponible.")
 
 st.set_page_config(
     page_title="Talys-Trade — Copilot IA Sales",
@@ -61,30 +82,12 @@ if "messages" not in st.session_state:
 # Sidebar
 with st.sidebar:
     st.title("🤖 Configuration & Status")
-    
-    # Cle Groq API
-    groq_input_key = st.text_input(
-        "🔑 Clé API Groq (Optionnel)",
-        value="",
-        type="password",
-        help="Laissez vide pour utiliser GROQ_API_KEY du fichier .env ou le mode dégradé autonome."
-    )
-    
-    active_key = groq_input_key.strip() or os.getenv("GROQ_API_KEY", "")
 
-    # Test réel du LLM (requête minimale), mis en cache 10 minutes
-    health = llm_health(active_key)
-    if health["provider"] is None:
-        st.info("🔵 Mode Autonome Intégré (aucune clé LLM)")
-    elif health["ok"]:
-        st.success(f"🟢 {health['provider']} : opérationnel\n\n`{health['model']}` · {health['latency']:.1f} s")
-    else:
-        st.error(f"🔴 {health['provider']} injoignable : {health['error']}")
-    if health["provider"] is not None:
-        st.caption("Testé par une vraie requête, renouvelée toutes les 10 min.")
-        if st.button("🔄 Tester le LLM maintenant", use_container_width=True):
-            llm_health.clear()
-            st.rerun()
+    # Cle Groq lue depuis .env ou les secrets Streamlit Cloud
+    active_key = os.getenv("GROQ_API_KEY", "")
+
+    # Emplacement du statut LLM, rempli en fin de script pour ne pas retarder la page
+    llm_status_slot = st.container()
 
     st.divider()
 
@@ -131,17 +134,17 @@ with st.sidebar:
 
     # Suggestions & Quick Actions
     st.subheader("💡 Suggestions Rapides")
-    if st.button("📊 Prévisions Ventes (30j)", use_container_width=True):
+    if st.button("📊 Prévisions Ventes (30j)", width="stretch"):
         st.session_state.prompt_trigger = "Quel est le chiffre d'affaires prévisionnel pour les 30 prochains jours ?"
-    if st.button("📈 Graphique Réel vs Prédit", use_container_width=True):
+    if st.button("📈 Graphique Réel vs Prédit", width="stretch"):
         st.session_state.prompt_trigger = "Affiche-moi le graphique de l'historique et des prévisions de ventes."
-    if st.button("🎯 Précision XGBoost", use_container_width=True):
+    if st.button("🎯 Précision XGBoost", width="stretch"):
         st.session_state.prompt_trigger = "Quelle est la précision du modèle XGBoost (MAPE et MAE) ?"
-    if st.button("🛒 Produits Catégorie Bio", use_container_width=True):
+    if st.button("🛒 Produits Catégorie Bio", width="stretch"):
         st.session_state.prompt_trigger = "Recherche les produits bio dans le catalogue"
 
     st.divider()
-    if st.button("🗑️ Effacer la conversation", type="secondary", use_container_width=True):
+    if st.button("🗑️ Effacer la conversation", type="secondary", width="stretch"):
         st.session_state.messages = [
             {
                 "role": "assistant",
@@ -162,7 +165,7 @@ def copilot_page():
     for msg in st.session_state.messages:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
-            render_model_caption(msg.get("model"))
+            render_fallback_notice(msg.get("model"))
 
             # Tools called badge
             tools_called = msg.get("tools_called", [])
@@ -218,7 +221,7 @@ def copilot_page():
                 has_chart = any(k in low_prompt for k in ["graphique", "courbe", "tendance", "visualis", "chart", "prévision", "historique"])
 
                 st.markdown(output_text)
-                render_model_caption(model_used)
+                render_fallback_notice(model_used)
 
                 if tools_called:
                     with st.expander("🔍 Outils exécutés", expanded=False):
@@ -266,3 +269,6 @@ page = st.navigation(
     position="top",
 )
 page.run()
+
+with llm_status_slot:
+    render_llm_status(active_key)
